@@ -1,5 +1,6 @@
 #define CONTROL_PIN 5
 #define SENSE_PIN A5
+#define BATTERY_VOLTAGE_PIN A4
 #define DEFAULT_CURRENT_LIMIT 0.1f
 
 bool testStarted = false;
@@ -16,8 +17,8 @@ float convertSenseToA(int sensedValue) {
 }
 
 int avgAnalogRead(int pin) {
-  int sum = 0;
-  const int readings = 100;
+  long sum = 0;
+  const long readings = 100;
   for (int i = 0; i < readings; i++) {
     sum += analogRead(pin);
   }
@@ -71,6 +72,9 @@ void loop() {
     if (testStarted) {
       Serial.print("Amp Seconds consumed: ");
       Serial.print(ampSeconds, DEC);
+      Serial.print(" Battery: ");
+      Serial.print( ( (float)avgAnalogRead(BATTERY_VOLTAGE_PIN) / 1024.f) * 5.f, DEC);
+      //Serial.print(avgAnalogRead(BATTERY_VOLTAGE_PIN), DEC);
       Serial.println("");
     } else {
       Serial.print("Current: ");
