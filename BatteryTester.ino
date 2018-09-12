@@ -1,7 +1,8 @@
 #define CONTROL_PIN 5
 #define SENSE_PIN A5
 #define BATTERY_VOLTAGE_PIN A4
-#define DEFAULT_CURRENT_LIMIT 0.1f
+#define DEFAULT_CURRENT_LIMIT 0.5f
+#define MIN_LI_ION_VOLTAGE 3.0f
 
 bool testStarted = false;
 long elapsedTestTime = 0;
@@ -23,6 +24,10 @@ int avgAnalogRead(int pin) {
     sum += analogRead(pin);
   }
   return sum/readings;
+}
+
+float batteryVoltage() {
+  return ( (float)avgAnalogRead(BATTERY_VOLTAGE_PIN) / 1024.f) * 5.f;
 }
 
 void setup() {
@@ -48,8 +53,7 @@ void loop() {
     currentControlValue = (currentControlValue - 1) % 255;
   }
 
-
-
+  //start test if not started
   static long lastSampleTimestamp = 0;
   if (currentCurrent > DEFAULT_CURRENT_LIMIT && testStarted == false) {
     testStarted = true;
@@ -59,6 +63,7 @@ void loop() {
     Serial.println("Test started...");
   }
 
+  //once per second, print statistics
   long currentTimestamp = millis();
   if (currentTimestamp > lastSampleTimestamp + 1000) {
     long elapsedSampleTime = currentTimestamp - lastSampleTimestamp;
@@ -73,8 +78,11 @@ void loop() {
       Serial.print("Amp Seconds consumed: ");
       Serial.print(ampSeconds, DEC);
       Serial.print(" Battery: ");
-      Serial.print( ( (float)avgAnalogRead(BATTERY_VOLTAGE_PIN) / 1024.f) * 5.f, DEC);
-      //Serial.print(avgAnalogRead(BATTERY_VOLTAGE_PIN), DEC);
+      Serial.print( batteryVoltage(), DEC);
+      Serial.print(" Current: ");
+      Serial.print(currentCurrent, DEC);
+      Serial.print(" Control: ");
+      Serial.print(currentControlValue, DEC);
       Serial.println("");
     } else {
       Serial.print("Current: ");
@@ -85,7 +93,16 @@ void loop() {
     }
   }
 
-  
+  //stop discharging and trap in a loop when min voltage reached
+  if (batteryVoltage() < MIN_LI_ION_VOLTAGE) {
+    Serial.println("Minimum battery voltage reached, halting.");
+    analogWrite(CONTROL_PIN, 0);
+    while (1) {
+      delay(60000);  
+      Serial.println("Minimum battery voltage reached, halting.");
+    }
+  }
+
   delay(100);
 }
 
